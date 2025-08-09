@@ -195,8 +195,7 @@ export const useStore = create<AppState>()(
     {
       partialize: (state) => ({ pages: state.pages, currentPageIndex: state.currentPageIndex, selectedPanelId: state.selectedPanelId }),
       onSave: (state) => {
-        const { set } = useStore.temporal.getState().temporal;
-        set({ ...state, lastUndoRedoTime: Date.now() });
+        useStore.setState({ lastUndoRedoTime: Date.now() });
       },
     }
   )
