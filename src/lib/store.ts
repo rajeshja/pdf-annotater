@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { temporal } from "zustand/middleware/temporal";
+import { temporal } from "zundo";
 import JSZip from "jszip";
 import * as pdfjsLib from "pdfjs-dist";
 import type { Page, Panel } from "@/types";
