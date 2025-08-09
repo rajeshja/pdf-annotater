@@ -8,10 +8,7 @@ import type { Page, Panel } from "@/types";
 import { detectPanels } from "@/ai/flows/panel-detection";
 
 if (typeof window !== "undefined") {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url
-  ).toString();
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 }
 
 const DPI = 300;
@@ -197,8 +194,9 @@ export const useStore = create<AppState>()(
     }),
     {
       partialize: (state) => ({ pages: state.pages, currentPageIndex: state.currentPageIndex, selectedPanelId: state.selectedPanelId }),
-       onSave: (_state, _prevState) => {
-        set({ lastUndoRedoTime: Date.now() });
+      onSave: (state) => {
+        const { set } = useStore.temporal.getState().temporal;
+        set({ ...state, lastUndoRedoTime: Date.now() });
       },
     }
   )
