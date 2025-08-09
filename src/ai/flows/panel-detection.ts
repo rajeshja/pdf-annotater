@@ -14,7 +14,7 @@ const DetectPanelsInputSchema = z.object({
   pageDataUri: z
     .string()
     .describe(
-      "A page from a PDF, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "A page from a PDF, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'"
     ),
   algorithmParams: z.object({
     threshold: z.number().describe('Threshold value for adaptive thresholding.'),
@@ -45,7 +45,7 @@ const panelDetectionAlgorithm = ai.defineTool({
     pageDataUri: z
       .string()
       .describe(
-        "A page from a PDF, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+        "A page from a PDF, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'"
       ),
     threshold: z.number().describe('Threshold value for adaptive thresholding.'),
     dilationKernelSize: z
@@ -64,7 +64,6 @@ async (input) => {
   // Mock implementation for now.
   // TODO: Implement OpenCV.js logic here
   console.log("Running mock panel detection algorithm.");
-  console.log("Input data URI:", input.pageDataUri);
   console.log("Algorithm parameters:", input);
 
   // Example:
@@ -84,7 +83,7 @@ const detectPanelsPrompt = ai.definePrompt({
   prompt: `Detect the panels in the image. Use the panelDetectionAlgorithm tool with the provided parameters.
 
 Image: {{media url=pageDataUri}}
-Parameters: {{{algorithmParams}}}`,// Ensure correct Handlebars syntax.
+Parameters: {{algorithmParams}}`,
 });
 
 const detectPanelsFlow = ai.defineFlow(
@@ -100,9 +99,9 @@ const detectPanelsFlow = ai.defineFlow(
       minContourArea: 5000,
     };
 
-    const {output} = await detectPanelsPrompt({
+    const {output} = await panelDetectionAlgorithm.run({
         pageDataUri: input.pageDataUri,
-        algorithmParams: algorithmParams,
+        ...algorithmParams,
     });
     return output!;
   }
