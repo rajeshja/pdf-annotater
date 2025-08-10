@@ -47,11 +47,13 @@ const panelDetectionAlgorithm = ai.defineTool({
       .describe(
         "A page from a PDF, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'"
       ),
-    threshold: z.number().describe('Threshold value for adaptive thresholding.'),
-    dilationKernelSize: z
-      .number()
-      .describe('Size of the kernel for dilation.'),
-    minContourArea: z.number().describe('Minimum area for a contour to be considered a panel.'),
+    algorithmParams: z.object({
+        threshold: z.number().describe('Threshold value for adaptive thresholding.'),
+        dilationKernelSize: z
+          .number()
+          .describe('Size of the kernel for dilation.'),
+        minContourArea: z.number().describe('Minimum area for a contour to be considered a panel.'),
+      }).optional(),
   }),
   outputSchema: z.array(z.object({
     x: z.number().describe('The x-coordinate of the panel.'),
@@ -64,7 +66,7 @@ async (input) => {
   // Mock implementation for now.
   // TODO: Implement OpenCV.js logic here
   console.log("Running mock panel detection algorithm.");
-  console.log("Algorithm parameters:", input);
+  console.log("Algorithm parameters:", input.algorithmParams);
 
   // Example:
   return [
@@ -83,7 +85,7 @@ const detectPanelsPrompt = ai.definePrompt({
   prompt: `Detect the panels in the image. Use the panelDetectionAlgorithm tool with the provided parameters.
 
 Image: {{media url=pageDataUri}}
-Parameters: {{algorithmParams}}`,
+Parameters: {{jsonStringify algorithmParams}}`,
 });
 
 const detectPanelsFlow = ai.defineFlow(
@@ -98,11 +100,12 @@ const detectPanelsFlow = ai.defineFlow(
       dilationKernelSize: 5,
       minContourArea: 5000,
     };
-
-    const {output} = await panelDetectionAlgorithm.run({
+    
+    const { output } = await detectPanelsPrompt({
         pageDataUri: input.pageDataUri,
-        ...algorithmParams,
+        algorithmParams: algorithmParams,
     });
-    return output!;
+
+    return output || [];
   }
 );
