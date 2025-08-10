@@ -9,6 +9,7 @@ import { Trash2 } from "lucide-react";
 
 interface AnnotationProps {
   panel: Panel;
+  onUpdate: (panelId: string, newProps: Partial<Omit<Panel, "id">>) => void;
 }
 
 type DragState = {
@@ -18,8 +19,8 @@ type DragState = {
   initialPanel: Panel;
 };
 
-export function Annotation({ panel }: AnnotationProps) {
-  const { selectedPanelId, setSelectedPanelId, updatePanel, deletePanel } = useStore();
+export function Annotation({ panel, onUpdate }: AnnotationProps) {
+  const { selectedPanelId, setSelectedPanelId, deletePanel } = useStore();
   const [dragState, setDragState] = useState<DragState | null>(null);
 
   const isSelected = selectedPanelId === panel.id;
@@ -77,7 +78,7 @@ export function Annotation({ panel }: AnnotationProps) {
       if(newProps.width && newProps.width < 10) newProps.width = 10;
       if(newProps.height && newProps.height < 10) newProps.height = 10;
       
-      updatePanel(panel.id, newProps);
+      onUpdate(panel.id, newProps);
     };
 
     const handleMouseUp = () => {

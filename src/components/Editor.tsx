@@ -16,10 +16,13 @@ export function Editor() {
     isCreatingPanel,
     addPanel,
     toggleCreatePanel,
+    updatePanel,
   } = useStore();
   
   const [newPanel, setNewPanel] = useState<Panel | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const [scaleFactor, setScaleFactor] = useState(1);
 
   const currentPage = pages[currentPageIndex];
 
@@ -35,6 +38,30 @@ export function Editor() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCreatingPanel, setSelectedPanelId, toggleCreatePanel]);
+  
+  useEffect(() => {
+    const calculateScale = () => {
+        if (imageRef.current && currentPage) {
+            const newScale = imageRef.current.offsetWidth / currentPage.width;
+            setScaleFactor(newScale);
+        }
+    }
+    
+    // Calculate scale on mount and on window resize
+    calculateScale();
+    window.addEventListener('resize', calculateScale);
+
+    // Also recalculate when the image source changes
+    const observer = new MutationObserver(calculateScale);
+    if(imageRef.current) {
+        observer.observe(imageRef.current, { attributes: true, attributeFilter: ['src']});
+    }
+
+    return () => {
+        window.removeEventListener('resize', calculateScale);
+        observer.disconnect();
+    }
+  }, [currentPage]);
 
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -65,13 +92,30 @@ export function Editor() {
 
   const handleMouseUp = () => {
     if (newPanel && newPanel.width > 10 && newPanel.height > 10) {
-      addPanel({ ...newPanel, id: `${currentPage.pageNumber}-${Math.random().toString(36).substr(2, 9)}` });
+      const scaledPanel: Panel = {
+        id: `${currentPage.pageNumber}-${Math.random().toString(36).substr(2, 9)}`,
+        x: newPanel.x / scaleFactor,
+        y: newPanel.y / scaleFactor,
+        width: newPanel.width / scaleFactor,
+        height: newPanel.height / scaleFactor,
+      };
+      addPanel(scaledPanel);
     }
     setNewPanel(null);
     if (isCreatingPanel) {
       toggleCreatePanel();
     }
   };
+  
+  const handlePanelUpdate = (panelId: string, newProps: Partial<Omit<Panel, "id">>) => {
+    const scaledProps: Partial<Omit<Panel, "id">> = {};
+    if (newProps.x !== undefined) scaledProps.x = newProps.x / scaleFactor;
+    if (newProps.y !== undefined) scaledProps.y = newProps.y / scaleFactor;
+    if (newProps.width !== undefined) scaledProps.width = newProps.width / scaleFactor;
+    if (newProps.height !== undefined) scaledProps.height = newProps.height / scaleFactor;
+
+    updatePanel(panelId, scaledProps);
+  }
 
   if (!currentPage) {
     return (
@@ -90,8 +134,8 @@ export function Editor() {
           isCreatingPanel && "cursor-crosshair"
         )}
         style={{
-          width: currentPage.width,
-          height: currentPage.height,
+          width: currentPage.width * scaleFactor,
+          height: currentPage.height * scaleFactor,
         }}
         onClick={() => setSelectedPanelId(null)}
         onMouseDown={handleMouseDown}
@@ -100,15 +144,21 @@ export function Editor() {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          ref={imageRef}
           src={currentPage.imageUrl}
           alt={`Page ${currentPage.pageNumber}`}
-          width={currentPage.width}
-          height={currentPage.height}
-          className="pointer-events-none select-none"
+          className="pointer-events-none select-none w-full h-full"
         />
-        {currentPage.panels.map((panel) => (
-          <Annotation key={panel.id} panel={panel} />
-        ))}
+        {currentPage.panels.map((panel) => {
+          const scaledPanel: Panel = {
+            ...panel,
+            x: panel.x * scaleFactor,
+            y: panel.y * scaleFactor,
+            width: panel.width * scaleFactor,
+            height: panel.height * scaleFactor,
+          };
+          return <Annotation key={panel.id} panel={scaledPanel} onUpdate={handlePanelUpdate} />;
+        })}
         {newPanel && (
           <div
             className="absolute border-2 border-dashed border-accent"
