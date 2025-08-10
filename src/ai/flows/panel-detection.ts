@@ -84,8 +84,7 @@ const detectPanelsPrompt = ai.definePrompt({
   output: {schema: DetectPanelsOutputSchema},
   prompt: `Detect the panels in the image. Use the panelDetectionAlgorithm tool with the provided parameters.
 
-Image: {{media url=pageDataUri}}
-Parameters: {{jsonStringify algorithmParams}}`,
+Image: {{media url=pageDataUri}}`,
 });
 
 const detectPanelsFlow = ai.defineFlow(
@@ -106,6 +105,14 @@ const detectPanelsFlow = ai.defineFlow(
         algorithmParams: algorithmParams,
     });
 
-    return output || [];
+    if (!output) {
+      const result = await panelDetectionAlgorithm({
+        pageDataUri: input.pageDataUri,
+        algorithmParams: algorithmParams,
+      });
+      return result;
+    }
+
+    return output;
   }
 );
