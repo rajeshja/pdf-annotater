@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type { Panel } from "@/types";
@@ -28,6 +28,17 @@ export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: Annotati
   const [localPanel, setLocalPanel] = useState<Panel>(panel);
 
   const isSelected = selectedPanelId === panel.id;
+  
+  // This ref will hold the final panel state to be committed on drag end.
+  const finalPanelRef = useRef<Panel | null>(null);
+  
+  useEffect(() => {
+    // Only commit the update when the drag is finished.
+    if (!dragState && finalPanelRef.current) {
+        onUpdate(panel.id, finalPanelRef.current);
+        finalPanelRef.current = null; // Clear the ref after committing
+    }
+  }, [dragState, onUpdate, panel.id]);
   
   // Sync local panel state if the prop changes from outside, but only when not actively dragging.
   useEffect(() => {
@@ -105,14 +116,14 @@ export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: Annotati
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
         
-        // Final calculation needs to be done here to get the correct end state of localPanel
-        // Since localPanel is updated in handleMouseMove, we can use it directly
+        // Update local state one last time to get the final dimensions,
+        // and store the final state in a ref. The useEffect hook will commit it.
         setLocalPanel(currentLocalPanel => {
             const finalPanel = { ...currentLocalPanel };
             if (finalPanel.width < 10) finalPanel.width = 10;
             if (finalPanel.height < 10) finalPanel.height = 10;
             
-            onUpdate(panel.id, finalPanel);
+            finalPanelRef.current = finalPanel;
             return finalPanel;
         });
 
