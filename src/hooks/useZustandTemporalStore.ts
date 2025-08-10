@@ -1,43 +1,25 @@
+
 "use client";
 
-import { useState, useEffect, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import type { StoreApi, UseBoundStore } from 'zustand';
+import type { TemporalState, StoreWithTemporal } from 'zundo';
+import type { AppState } from '@/lib/store';
 
-type TemporalState<T> = {
-  pastStates: T[];
-  futureStates: T[];
-  undo: (steps?: number) => void;
-  redo: (steps?: number) => void;
-  clear: () => void;
-  isTracking: boolean;
-  pause: () => void;
-  resume: () => void;
+// Type definitions for the temporal store
+type UseTemporalStore<T> = {
+  (): T;
+  <U>(selector: (state: T) => U, equality?: (a: U, b: U) => boolean): U;
 };
 
-type WithTemporal<S> = S & {
-  temporal: TemporalState<S>;
-};
-
-type UseTemporalStore<S> = {
-  (): TemporalState<S>;
-  <U>(selector: (state: TemporalState<S>) => U): U;
-};
-
-export const useZustandTemporalStore = <S extends StoreApi<object>>(
-  store: S
+// Custom hook to access the temporal state of the main store
+export const useZustandTemporalStore = <S extends AppState>(
+  store: UseBoundStore<StoreApi<S & { temporal: TemporalState<S> }>>
 ) => {
-    const temporalStore = (store as any).temporal as StoreApi<TemporalState<S>>;
+  const temporal = useSyncExternalStore(
+    store.temporal.subscribe,
+    store.temporal.getState
+  );
 
-    const [state, setState] = useState(temporalStore.getState());
-
-    useEffect(() => {
-        const unsubscribe = temporalStore.subscribe(
-            (newState) => {
-                setState(newState);
-            }
-        );
-        return unsubscribe;
-    }, [temporalStore]);
-
-    return state;
+  return temporal;
 };
