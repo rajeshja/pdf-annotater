@@ -38,6 +38,40 @@ function imageToMat(dataUri: string): Promise<any> {
   });
 }
 
+function mergeOverlappingRects(rects: any[], padding = 10) {
+    if (rects.length === 0) return [];
+    
+    let merged = true;
+    while (merged) {
+        merged = false;
+        for (let i = 0; i < rects.length; i++) {
+            for (let j = i + 1; j < rects.length; j++) {
+                const rect1 = rects[i];
+                const rect2 = rects[j];
+
+                const r1 = { x1: rect1.x - padding, y1: rect1.y - padding, x2: rect1.x + rect1.width + padding, y2: rect1.y + rect1.height + padding };
+                const r2 = { x1: rect2.x, y1: rect2.y, x2: rect2.x + rect2.width, y2: rect2.y + rect2.height };
+
+                // Check for intersection
+                if (!(r1.x2 < r2.x1 || r1.x1 > r2.x2 || r1.y2 < r2.y1 || r1.y1 > r2.y2)) {
+                    const mergedRect = {
+                        x: Math.min(rect1.x, rect2.x),
+                        y: Math.min(rect1.y, rect2.y),
+                        width: Math.max(rect1.x + rect1.width, rect2.x + rect2.width) - Math.min(rect1.x, rect2.x),
+                        height: Math.max(rect1.y + rect1.height, rect2.y + rect2.height) - Math.min(rect1.y, rect2.y),
+                    };
+                    rects.splice(j, 1);
+                    rects[i] = mergedRect;
+                    merged = true;
+                    break;
+                }
+            }
+            if (merged) break;
+        }
+    }
+    return rects;
+}
+
 
 /**
  * Detects panels in a comic page image using OpenCV.js.
@@ -58,7 +92,8 @@ export async function detectPanelsWithOpencv(pageDataUri: string) {
   const thresh = new cv.Mat();
   cv.adaptiveThreshold(gray, thresh, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 11, 5);
 
-  const kernel = cv.Mat.ones(5, 5, cv.CV_8U);
+  // Use a larger kernel to merge text blocks and title letters
+  const kernel = cv.Mat.ones(15, 15, cv.CV_8U);
   const dilated = new cv.Mat();
   cv.dilate(thresh, dilated, kernel, new cv.Point(-1, -1), 1);
 
@@ -67,8 +102,8 @@ export async function detectPanelsWithOpencv(pageDataUri: string) {
   const hierarchy = new cv.Mat();
   cv.findContours(dilated, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-  const panels = [];
-  const minArea = 1000; // Heuristic: minimum area to be considered a panel.
+  let panels = [];
+  const minArea = 500; // Adjusted min area
 
   // Iterate over the contours and filter them to find the panels.
   for (let i = 0; i < contours.size(); ++i) {
@@ -77,7 +112,7 @@ export async function detectPanelsWithOpencv(pageDataUri: string) {
     if (area > minArea) {
       const rect = cv.boundingRect(contour);
       // Filter out contours that are too wide or too tall relative to the page size.
-      if (rect.width / src.cols < 0.95 && rect.height / src.rows < 0.95) {
+      if (rect.width / src.cols < 0.98 && rect.height / src.rows < 0.98) {
         panels.push({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
       }
     }
@@ -91,6 +126,9 @@ export async function detectPanelsWithOpencv(pageDataUri: string) {
   dilated.delete();
   contours.delete();
   hierarchy.delete();
+  
+  // Merge overlapping rectangles to consolidate fragmented text blocks
+  panels = mergeOverlappingRects(panels, 15);
 
   return panels;
 }
