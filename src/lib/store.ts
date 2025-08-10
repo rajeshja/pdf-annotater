@@ -238,7 +238,10 @@ export const useStore = create<AppState>()(
       },
     }),
     {
-      partialize: (state) => ({ pages: state.pages, currentPageIndex: state.currentPageIndex, selectedPanelId: state.selectedPanelId }),
+      partialize: (state) => {
+        const { pages, currentPageIndex, selectedPanelId } = state;
+        return { pages, currentPageIndex, selectedPanelId };
+      },
     }
   )
 );
