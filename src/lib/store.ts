@@ -36,6 +36,35 @@ export interface AppState {
   setDetectionMethod: (method: DetectionMethod) => void;
 }
 
+function filterNestedPanels(panels: Omit<Panel, "id">[]): Omit<Panel, "id">[] {
+  let filteredPanels = [...panels];
+  
+  for (let i = 0; i < filteredPanels.length; i++) {
+    for (let j = 0; j < filteredPanels.length; j++) {
+      if (i === j) continue;
+
+      const panelA = filteredPanels[i];
+      const panelB = filteredPanels[j];
+      
+      if(!panelA || !panelB) continue;
+
+      const isContained =
+        panelA.x >= panelB.x &&
+        panelA.y >= panelB.y &&
+        panelA.x + panelA.width <= panelB.x + panelB.width &&
+        panelA.y + panelA.height <= panelB.y + panelB.height;
+
+      if (isContained) {
+        // panelA is inside panelB, remove panelA
+        delete filteredPanels[i];
+      }
+    }
+  }
+  
+  return filteredPanels.filter(p => p); // remove empty spots
+}
+
+
 export const useStore = create<AppState>()(
   temporal(
     (set, get) => ({
@@ -89,8 +118,10 @@ export const useStore = create<AppState>()(
               } else {
                  detected = await detectPanelsWithOpencv(page.imageUrl);
               }
+              
+              const filtered = filterNestedPanels(detected);
 
-              const panelsWithIds: Panel[] = detected.map((p) => ({
+              const panelsWithIds: Panel[] = filtered.map((p) => ({
                 ...p,
                 id: `${page.pageNumber}-${Math.random().toString(36).substr(2, 9)}`,
               }));
