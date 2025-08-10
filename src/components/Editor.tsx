@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useStore, temporalStore } from "@/lib/store";
+import { useStore, useTemporalStore } from "@/lib/store";
 import { Annotation } from "@/components/Annotation";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,7 @@ export function Editor() {
   const editorRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [scaleFactor, setScaleFactor] = useState(1);
-  const temporal = temporalStore;
+  const temporal = useTemporalStore(s => s);
 
   const currentPage = pages[currentPageIndex];
 

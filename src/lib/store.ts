@@ -1,11 +1,12 @@
 
 "use client";
 
-import { create, StoreApi } from "zustand";
+import { create, type StoreApi } from "zustand";
 import { temporal, type TemporalState } from "zundo";
 import JSZip from "jszip";
 import * as pdfjsLib from "pdfjs-dist";
 import type { Page, Panel } from "@/types";
+import { useStore as useZustandStore } from 'zustand';
 
 if (typeof window !== "undefined") {
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -237,4 +238,10 @@ export const useStore = create<AppState>()(
   })
 );
 
-export const temporalStore = useStore.temporal;
+export const useTemporalStore = <T,>(
+  selector: (state: TemporalState<Pick<AppState, 'pages' | 'currentPageIndex' | 'selectedPanelId'>>) => T,
+  equality?: (a: T, b: T) => boolean,
+) => {
+  return useZustandStore(useStore.temporal, selector, equality);
+};
+
