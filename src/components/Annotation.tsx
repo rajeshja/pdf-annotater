@@ -101,10 +101,10 @@ export function Annotation({ panel }: AnnotationProps) {
   return (
     <div
       className={cn(
-        "absolute border-2 transition-all",
+        "absolute border-2 transition-all box-border",
         isSelected
           ? "border-primary bg-primary/20"
-          : "border-transparent hover:border-primary/50",
+          : "border-accent/70 bg-accent/10",
       )}
       style={{
         left: panel.x,
