@@ -11,8 +11,6 @@ import { Trash2 } from "lucide-react";
 interface AnnotationProps {
   panel: Panel;
   onUpdate: (panelId: string, finalPanel: Panel) => void;
-  onDragStart: () => void;
-  onDragEnd: () => void;
 }
 
 type DragState = {
@@ -22,7 +20,7 @@ type DragState = {
   initialPanel: Panel;
 };
 
-export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: AnnotationProps) {
+export function Annotation({ panel, onUpdate }: AnnotationProps) {
   const { selectedPanelId, setSelectedPanelId, deletePanel } = useStore();
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [localPanel, setLocalPanel] = useState<Panel>(panel);
@@ -43,7 +41,6 @@ export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: Annotati
   ) => {
     e.stopPropagation();
     setSelectedPanelId(panel.id);
-    onDragStart(); // Pause temporal store
 
     // Start drag state with the most recent panel state
     const currentPanel = localPanel;
@@ -129,7 +126,6 @@ export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: Annotati
         
         onUpdate(panel.id, finalPanel);
         setDragState(null);
-        onDragEnd(); // Resume temporal store
     };
 
     document.addEventListener("mousemove", handleMouseMove);
@@ -161,7 +157,11 @@ export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: Annotati
         height: displayPanel.height,
         cursor: "move",
       }}
-      onMouseDown={(e) => handleMouseDown(e, "move")}
+      onMouseDown={(e) => {
+        // Prevent triggering the editor's deselect logic
+        e.stopPropagation();
+        handleMouseDown(e, "move");
+      }}
     >
       {isSelected && (
         <>

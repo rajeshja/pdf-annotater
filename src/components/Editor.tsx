@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useStore, temporalStore } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { Annotation } from "@/components/Annotation";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -18,8 +18,8 @@ export function Editor() {
     addPanel,
     toggleCreatePanel,
     updatePanel,
+    temporal,
   } = useStore();
-  const { pause, resume } = temporalStore;
   
   const [newPanel, setNewPanel] = useState<Panel | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -67,8 +67,12 @@ export function Editor() {
 
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isCreatingPanel || !editorRef.current) return;
+    if (!isCreatingPanel || !editorRef.current) {
+      if(selectedPanelId) setSelectedPanelId(null);
+      return;
+    };
     
+    temporal.pause();
     const rect = editorRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -93,6 +97,7 @@ export function Editor() {
   };
 
   const handleMouseUp = () => {
+    temporal.resume();
     if (newPanel && newPanel.width > 10 && newPanel.height > 10) {
       const scaledPanel: Panel = {
         id: `${currentPage.pageNumber}-${Math.random().toString(36).substr(2, 9)}`,
@@ -110,6 +115,7 @@ export function Editor() {
   };
   
   const handlePanelUpdate = (panelId: string, finalPanel: Panel) => {
+    temporal.pause();
     const scaledProps: Partial<Omit<Panel, "id">> = {};
     if (finalPanel.x !== undefined) scaledProps.x = finalPanel.x / scaleFactor;
     if (finalPanel.y !== undefined) scaledProps.y = finalPanel.y / scaleFactor;
@@ -117,6 +123,7 @@ export function Editor() {
     if (finalPanel.height !== undefined) scaledProps.height = finalPanel.height / scaleFactor;
 
     updatePanel(panelId, scaledProps);
+    temporal.resume();
   }
 
   if (!currentPage) {
@@ -139,7 +146,6 @@ export function Editor() {
           width: currentPage.width * scaleFactor,
           height: currentPage.height * scaleFactor,
         }}
-        onClick={() => setSelectedPanelId(null)}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -164,8 +170,6 @@ export function Editor() {
               key={panel.id} 
               panel={scaledPanel} 
               onUpdate={handlePanelUpdate}
-              onDragStart={pause}
-              onDragEnd={resume} 
             />
           );
         })}
