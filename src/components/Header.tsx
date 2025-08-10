@@ -1,11 +1,11 @@
+
 "use client";
 
-import { useStore } from "@/lib/store";
+import { useStore, useTemporalStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FilePlus, Undo2, Redo2, Square, Download, Sparkles } from "lucide-react";
-import { useZustandTemporalStore } from "@/hooks/useZustandTemporalStore";
 
 interface HeaderProps {
   onBrowseClick: () => void;
@@ -13,7 +13,7 @@ interface HeaderProps {
 
 export function Header({ onBrowseClick }: HeaderProps) {
   const { file, exportToCbz, isCreatingPanel, toggleCreatePanel } = useStore();
-  const { undo, redo, pastStates, futureStates } = useZustandTemporalStore(useStore);
+  const { undo, redo, pastStates, futureStates } = useTemporalStore((state) => state);
 
   return (
     <header className="flex h-16 items-center border-b bg-card px-4 shrink-0">
@@ -29,7 +29,7 @@ export function Header({ onBrowseClick }: HeaderProps) {
             <div className="flex items-center gap-1">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={undo} disabled={pastStates.length === 0}>
+                  <Button variant="ghost" size="icon" onClick={() => undo()} disabled={pastStates.length === 0}>
                     <Undo2 className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
@@ -39,7 +39,7 @@ export function Header({ onBrowseClick }: HeaderProps) {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={redo} disabled={futureStates.length === 0}>
+                  <Button variant="ghost" size="icon" onClick={() => redo()} disabled={futureStates.length === 0}>
                     <Redo2 className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>

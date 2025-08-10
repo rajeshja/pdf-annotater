@@ -39,44 +39,10 @@ export interface AppState {
 
 type Partialize = Pick<AppState, 'pages' | 'currentPageIndex' | 'selectedPanelId'>;
 
-export type StoreWithTemporal = AppState & {
-  temporal: TemporalState<Partialize>;
-};
-
-type AppStateCreator = (
+const store = (
   set: StoreApi<AppState>['setState'],
   get: StoreApi<AppState>['getState'],
-) => AppState;
-
-function filterNestedPanels(panels: Omit<Panel, "id">[]): Omit<Panel, "id">[] {
-  let filteredPanels = [...panels];
-  
-  for (let i = 0; i < filteredPanels.length; i++) {
-    for (let j = 0; j < filteredPanels.length; j++) {
-      if (i === j) continue;
-
-      const panelA = filteredPanels[i];
-      const panelB = filteredPanels[j];
-      
-      if(!panelA || !panelB) continue;
-
-      const isContained =
-        panelA.x >= panelB.x &&
-        panelA.y >= panelB.y &&
-        panelA.x + panelA.width <= panelB.x + panelB.width &&
-        panelA.y + panelA.height <= panelB.y + panelB.height;
-
-      if (isContained) {
-        // panelA is inside panelB, remove panelA
-        delete filteredPanels[i];
-      }
-    }
-  }
-  
-  return filteredPanels.filter(p => p); // remove empty spots
-}
-
-const store: AppStateCreator = (set, get) => ({
+): AppState => ({
     file: null,
     pages: [],
     currentPageIndex: 0,
@@ -248,16 +214,45 @@ const store: AppStateCreator = (set, get) => ({
     },
 });
 
+function filterNestedPanels(panels: Omit<Panel, "id">[]): Omit<Panel, "id">[] {
+  let filteredPanels = [...panels];
+  
+  for (let i = 0; i < filteredPanels.length; i++) {
+    for (let j = 0; j < filteredPanels.length; j++) {
+      if (i === j) continue;
+
+      const panelA = filteredPanels[i];
+      const panelB = filteredPanels[j];
+      
+      if(!panelA || !panelB) continue;
+
+      const isContained =
+        panelA.x >= panelB.x &&
+        panelA.y >= panelB.y &&
+        panelA.x + panelA.width <= panelB.x + panelB.width &&
+        panelA.y + panelA.height <= panelB.y + panelB.height;
+
+      if (isContained) {
+        // panelA is inside panelB, remove panelA
+        delete filteredPanels[i];
+      }
+    }
+  }
+  
+  return filteredPanels.filter(p => p); // remove empty spots
+}
+
 
 export const useStore = create(
-  temporal(store as any, {
+  temporal(store, {
     partialize: (state: AppState): Partialize => {
       const { pages, currentPageIndex, selectedPanelId } = state;
       return { pages, currentPageIndex, selectedPanelId };
     },
   })
-) as StoreApi<StoreWithTemporal>['getState'] & {
-  subscribe: StoreApi<StoreWithTemporal>['subscribe'];
-  temporal: StoreApi<StoreWithTemporal>['temporal'];
-};
-(useStore as any).temporal = (useStore as any).getState().temporal;
+);
+
+export const useTemporalStore = <T>(
+  selector: (state: TemporalState<Partialize>) => T,
+  equality?: (a: T, b: T) => boolean,
+) => useStore((state) => selector(state.temporal), equality);

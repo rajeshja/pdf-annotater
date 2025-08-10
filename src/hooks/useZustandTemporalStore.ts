@@ -14,7 +14,7 @@ type UseTemporalStore<T> = {
 
 // Custom hook to access the temporal state of the main store
 export const useZustandTemporalStore = <S extends AppState>(
-  store: UseBoundStore<StoreApi<S & { temporal: TemporalState<S> }>>
+  store: UseBoundStore<StoreApi<S>> & { temporal: TemporalState<S> }
 ) => {
   const temporal = useSyncExternalStore(
     store.temporal.subscribe,
