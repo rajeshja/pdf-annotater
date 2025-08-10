@@ -1,13 +1,14 @@
 
 "use client";
 
-import { create, type StoreApi } from "zustand";
+import { create } from "zustand";
 import { temporal, type TemporalState } from "zundo";
 import JSZip from "jszip";
 import * as pdfjsLib from "pdfjs-dist";
 import type { Page, Panel } from "@/types";
 import { detectPanels as detectPanelsWithGemini } from "@/ai/flows/panel-detection";
 import { detectPanelsWithOpencv } from "@/lib/opencv";
+import { StoreApi } from "zustand";
 
 if (typeof window !== "undefined") {
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -37,7 +38,9 @@ export interface AppState {
   setDetectionMethod: (method: DetectionMethod) => void;
 }
 
-type Partialize = Pick<AppState, 'pages' | 'currentPageIndex' | 'selectedPanelId'>;
+type StoreWithTemporal = AppState & {
+  temporal: TemporalState<Pick<AppState, 'pages' | 'currentPageIndex' | 'selectedPanelId'>>;
+};
 
 const store = (
   set: StoreApi<AppState>['setState'],
@@ -242,17 +245,11 @@ function filterNestedPanels(panels: Omit<Panel, "id">[]): Omit<Panel, "id">[] {
   return filteredPanels.filter(p => p); // remove empty spots
 }
 
-
-export const useStore = create(
+export const useStore = create<StoreWithTemporal>(
   temporal(store, {
-    partialize: (state: AppState): Partialize => {
+    partialize: (state) => {
       const { pages, currentPageIndex, selectedPanelId } = state;
       return { pages, currentPageIndex, selectedPanelId };
     },
   })
 );
-
-export const useTemporalStore = <T>(
-  selector: (state: TemporalState<Partialize>) => T,
-  equality?: (a: T, b: T) => boolean,
-) => useStore((state) => selector(state.temporal), equality);

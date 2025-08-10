@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useStore, useTemporalStore } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -13,7 +13,7 @@ interface HeaderProps {
 
 export function Header({ onBrowseClick }: HeaderProps) {
   const { file, exportToCbz, isCreatingPanel, toggleCreatePanel } = useStore();
-  const { undo, redo, pastStates, futureStates } = useTemporalStore((state) => state);
+  const { undo, redo, pastStates, futureStates } = useStore(s => s.temporal);
 
   return (
     <header className="flex h-16 items-center border-b bg-card px-4 shrink-0">
