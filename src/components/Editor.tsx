@@ -19,7 +19,7 @@ export function Editor() {
     toggleCreatePanel,
     updatePanel,
   } = useStore();
-  const { pause, resume } = temporalStore.getState();
+  const { pause, resume } = temporalStore;
   
   const [newPanel, setNewPanel] = useState<Panel | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -109,12 +109,12 @@ export function Editor() {
     }
   };
   
-  const handlePanelUpdate = (panelId: string, newProps: Partial<Omit<Panel, "id">>) => {
+  const handlePanelUpdate = (panelId: string, finalPanel: Panel) => {
     const scaledProps: Partial<Omit<Panel, "id">> = {};
-    if (newProps.x !== undefined) scaledProps.x = newProps.x / scaleFactor;
-    if (newProps.y !== undefined) scaledProps.y = newProps.y / scaleFactor;
-    if (newProps.width !== undefined) scaledProps.width = newProps.width / scaleFactor;
-    if (newProps.height !== undefined) scaledProps.height = newProps.height / scaleFactor;
+    if (finalPanel.x !== undefined) scaledProps.x = finalPanel.x / scaleFactor;
+    if (finalPanel.y !== undefined) scaledProps.y = finalPanel.y / scaleFactor;
+    if (finalPanel.width !== undefined) scaledProps.width = finalPanel.width / scaleFactor;
+    if (finalPanel.height !== undefined) scaledProps.height = finalPanel.height / scaleFactor;
 
     updatePanel(panelId, scaledProps);
   }

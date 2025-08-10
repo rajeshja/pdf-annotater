@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type { Panel } from "@/types";
@@ -10,7 +10,7 @@ import { Trash2 } from "lucide-react";
 
 interface AnnotationProps {
   panel: Panel;
-  onUpdate: (panelId: string, newProps: Partial<Omit<Panel, "id">>) => void;
+  onUpdate: (panelId: string, finalPanel: Panel) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
 }
@@ -28,13 +28,14 @@ export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: Annotati
   const [localPanel, setLocalPanel] = useState<Panel>(panel);
 
   const isSelected = selectedPanelId === panel.id;
-
-  // Sync local panel state if the prop changes from outside
-  if (panel.x !== localPanel.x || panel.y !== localPanel.y || panel.width !== localPanel.width || panel.height !== localPanel.height) {
+  
+  // Sync local panel state if the prop changes from outside, but only when not actively dragging.
+  useEffect(() => {
     if (!dragState) {
       setLocalPanel(panel);
     }
-  }
+  }, [panel, dragState]);
+
 
   const handleMouseDown = (
     e: React.MouseEvent<HTMLDivElement>,
@@ -42,15 +43,22 @@ export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: Annotati
   ) => {
     e.stopPropagation();
     setSelectedPanelId(panel.id);
+    onDragStart(); // Pause temporal store
+
+    // Start drag state with the most recent panel state
+    const currentPanel = localPanel;
     setDragState({
       type,
       startX: e.clientX,
       startY: e.clientY,
-      initialPanel: panel, // Use the passed-in panel as the base for calculations
+      initialPanel: currentPanel,
     });
-    onDragStart(); // Notify parent that a drag has started
+    
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
+      // Use a new reference to the initial panel state for each move calculation
+      const initialPanelForMove = { ...currentPanel };
+      
       const dx = moveEvent.clientX - e.clientX;
       const dy = moveEvent.clientY - e.clientY;
       
@@ -58,31 +66,31 @@ export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: Annotati
 
       switch (type) {
         case "move":
-          newProps = { x: panel.x + dx, y: panel.y + dy };
+          newProps = { x: initialPanelForMove.x + dx, y: initialPanelForMove.y + dy };
           break;
         case "resize-br":
-          newProps = { width: panel.width + dx, height: panel.height + dy };
+          newProps = { width: initialPanelForMove.width + dx, height: initialPanelForMove.height + dy };
           break;
         case "resize-bl":
-          newProps = { x: panel.x + dx, width: panel.width - dx, height: panel.height + dy };
+          newProps = { x: initialPanelForMove.x + dx, width: initialPanelForMove.width - dx, height: initialPanelForMove.height + dy };
           break;
         case "resize-tr":
-            newProps = { y: panel.y + dy, width: panel.width + dx, height: panel.height - dy };
+            newProps = { y: initialPanelForMove.y + dy, width: initialPanelForMove.width + dx, height: initialPanelForMove.height - dy };
             break;
         case "resize-tl":
-            newProps = { x: panel.x + dx, y: panel.y + dy, width: panel.width - dx, height: panel.height - dy };
+            newProps = { x: initialPanelForMove.x + dx, y: initialPanelForMove.y + dy, width: initialPanelForMove.width - dx, height: initialPanelForMove.height - dy };
             break;
         case "resize-t":
-            newProps = { y: panel.y + dy, height: panel.height - dy };
+            newProps = { y: initialPanelForMove.y + dy, height: initialPanelForMove.height - dy };
             break;
         case "resize-b":
-            newProps = { height: panel.height + dy };
+            newProps = { height: initialPanelForMove.height + dy };
             break;
         case "resize-l":
-            newProps = { x: panel.x + dx, width: panel.width - dx };
+            newProps = { x: initialPanelForMove.x + dx, width: initialPanelForMove.width - dx };
             break;
         case "resize-r":
-            newProps = { width: panel.width + dx };
+            newProps = { width: initialPanelForMove.width + dx };
             break;
       }
       
@@ -93,19 +101,35 @@ export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: Annotati
       setLocalPanel(prev => ({...prev, ...newProps }));
     };
 
-    const handleMouseUp = () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      
-      // At the end of the drag, call the onUpdate function to persist the final change.
-      setDragState(null);
-      onUpdate(panel.id, {
-        x: localPanel.x,
-        y: localPanel.y,
-        width: localPanel.width,
-        height: localPanel.height
-      });
-      onDragEnd(); // Notify parent that the drag has ended
+    const handleMouseUp = (upEvent: MouseEvent) => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+        
+        // Final calculation needs to be done here to get the correct end state of localPanel
+        const dx = upEvent.clientX - e.clientX;
+        const dy = upEvent.clientY - e.clientY;
+        
+        let finalProps: Partial<Panel> = {};
+
+        switch (type) {
+            case "move": finalProps = { x: currentPanel.x + dx, y: currentPanel.y + dy }; break;
+            case "resize-br": finalProps = { width: currentPanel.width + dx, height: currentPanel.height + dy }; break;
+            case "resize-bl": finalProps = { x: currentPanel.x + dx, width: currentPanel.width - dx, height: currentPanel.height + dy }; break;
+            case "resize-tr": finalProps = { y: currentPanel.y + dy, width: currentPanel.width + dx, height: currentPanel.height - dy }; break;
+            case "resize-tl": finalProps = { x: currentPanel.x + dx, y: currentPanel.y + dy, width: currentPanel.width - dx, height: currentPanel.height - dy }; break;
+            case "resize-t": finalProps = { y: currentPanel.y + dy, height: currentPanel.height - dy }; break;
+            case "resize-b": finalProps = { height: currentPanel.height + dy }; break;
+            case "resize-l": finalProps = { x: currentPanel.x + dx, width: currentPanel.width - dx }; break;
+            case "resize-r": finalProps = { width: currentPanel.width + dx }; break;
+        }
+
+        const finalPanel = { ...currentPanel, ...finalProps };
+        if(finalPanel.width < 10) finalPanel.width = 10;
+        if(finalPanel.height < 10) finalPanel.height = 10;
+        
+        onUpdate(panel.id, finalPanel);
+        setDragState(null);
+        onDragEnd(); // Resume temporal store
     };
 
     document.addEventListener("mousemove", handleMouseMove);
