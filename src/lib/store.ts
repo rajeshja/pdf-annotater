@@ -37,8 +37,10 @@ export interface AppState {
   setDetectionMethod: (method: DetectionMethod) => void;
 }
 
+type Partialize = Pick<AppState, 'pages' | 'currentPageIndex' | 'selectedPanelId'>;
+
 export type StoreWithTemporal = AppState & {
-  temporal: TemporalState<Pick<AppState, 'pages' | 'currentPageIndex' | 'selectedPanelId'>>;
+  temporal: TemporalState<Partialize>;
 };
 
 type AppStateCreator = (
@@ -247,11 +249,15 @@ const store: AppStateCreator = (set, get) => ({
 });
 
 
-export const useStore = create<StoreWithTemporal>()(
-  temporal(store, {
-    partialize: (state) => {
+export const useStore = create(
+  temporal(store as any, {
+    partialize: (state: AppState): Partialize => {
       const { pages, currentPageIndex, selectedPanelId } = state;
       return { pages, currentPageIndex, selectedPanelId };
     },
   })
-);
+) as StoreApi<StoreWithTemporal>['getState'] & {
+  subscribe: StoreApi<StoreWithTemporal>['subscribe'];
+  temporal: StoreApi<StoreWithTemporal>['temporal'];
+};
+(useStore as any).temporal = (useStore as any).getState().temporal;
