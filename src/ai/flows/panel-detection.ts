@@ -82,9 +82,7 @@ const detectPanelsPrompt = ai.definePrompt({
   tools: [panelDetectionAlgorithm],
   input: {schema: DetectPanelsInputSchema},
   output: {schema: DetectPanelsOutputSchema},
-  prompt: `Detect the panels in the image. Use the panelDetectionAlgorithm tool with the provided parameters.
-
-Image: {{media url=pageDataUri}}`,
+  prompt: `Detect the panels in the image. Use the panelDetectionAlgorithm tool with the provided image and parameters.`,
 });
 
 const detectPanelsFlow = ai.defineFlow(
@@ -95,24 +93,29 @@ const detectPanelsFlow = ai.defineFlow(
   },
   async input => {
     const algorithmParams = input.algorithmParams || {
-      threshold: 127,
+      threshold: 128,
       dilationKernelSize: 5,
-      minContourArea: 5000,
+      minContourArea: 100,
     };
     
-    const { output } = await detectPanelsPrompt({
+    const llmResponse = await detectPanelsPrompt({
         pageDataUri: input.pageDataUri,
         algorithmParams: algorithmParams,
     });
 
-    if (!output) {
-      const result = await panelDetectionAlgorithm({
-        pageDataUri: input.pageDataUri,
-        algorithmParams: algorithmParams,
-      });
-      return result;
+    const toolRequest = llmResponse.toolRequest();
+    if (!toolRequest) {
+      console.log("No tool request found, returning empty array.");
+      return [];
     }
+    
+    const toolResponse = await toolRequest.run();
 
-    return output;
+    const llmResponseWithToolOutput = await detectPanelsPrompt({
+      pageDataUri: input.pageDataUri,
+      algorithmParams: algorithmParams,
+    }, { toolResponse });
+
+    return llmResponseWithToolOutput.output() || [];
   }
 );
