@@ -37,9 +37,14 @@ export interface AppState {
   setDetectionMethod: (method: DetectionMethod) => void;
 }
 
-type StoreWithTemporal = AppState & {
-  temporal: TemporalState<AppState>;
+export type StoreWithTemporal = AppState & {
+  temporal: TemporalState<Pick<AppState, 'pages' | 'currentPageIndex' | 'selectedPanelId'>>;
 };
+
+type AppStateCreator = (
+  set: StoreApi<AppState>['setState'],
+  get: StoreApi<AppState>['getState'],
+) => AppState;
 
 function filterNestedPanels(panels: Omit<Panel, "id">[]): Omit<Panel, "id">[] {
   let filteredPanels = [...panels];
@@ -69,7 +74,7 @@ function filterNestedPanels(panels: Omit<Panel, "id">[]): Omit<Panel, "id">[] {
   return filteredPanels.filter(p => p); // remove empty spots
 }
 
-const store = (set: StoreApi<AppState>['setState'], get: StoreApi<AppState>['getState']): AppState => ({
+const store: AppStateCreator = (set, get) => ({
     file: null,
     pages: [],
     currentPageIndex: 0,
@@ -114,9 +119,10 @@ const store = (set: StoreApi<AppState>['setState'], get: StoreApi<AppState>['get
           try {
             let detected: Omit<Panel, 'id'>[] = [];
             if (detectionMethod === 'gemini') {
-              detected = await detectPanelsWithGemini({
+              const result = await detectPanelsWithGemini({
                 pageDataUri: page.imageUrl,
               });
+              detected = result || [];
             } else {
                 detected = await detectPanelsWithOpencv(page.imageUrl);
             }
@@ -245,7 +251,7 @@ export const useStore = create<StoreWithTemporal>()(
   temporal(store, {
     partialize: (state) => {
       const { pages, currentPageIndex, selectedPanelId } = state;
-      return { pages, currentPageIndex, selectedPanelId } as AppState;
+      return { pages, currentPageIndex, selectedPanelId };
     },
   })
 );
