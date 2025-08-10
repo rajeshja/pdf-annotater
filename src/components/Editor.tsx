@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, temporalStore } from "@/lib/store";
 import { Annotation } from "@/components/Annotation";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ export function Editor() {
     toggleCreatePanel,
     updatePanel,
   } = useStore();
+  const { pause, resume } = temporalStore.getState();
   
   const [newPanel, setNewPanel] = useState<Panel | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -157,7 +159,15 @@ export function Editor() {
             width: panel.width * scaleFactor,
             height: panel.height * scaleFactor,
           };
-          return <Annotation key={panel.id} panel={scaledPanel} onUpdate={handlePanelUpdate} />;
+          return (
+            <Annotation 
+              key={panel.id} 
+              panel={scaledPanel} 
+              onUpdate={handlePanelUpdate}
+              onDragStart={pause}
+              onDragEnd={resume} 
+            />
+          );
         })}
         {newPanel && (
           <div

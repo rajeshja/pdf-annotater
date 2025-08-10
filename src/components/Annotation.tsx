@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -10,6 +11,8 @@ import { Trash2 } from "lucide-react";
 interface AnnotationProps {
   panel: Panel;
   onUpdate: (panelId: string, newProps: Partial<Omit<Panel, "id">>) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
 }
 
 type DragState = {
@@ -19,11 +22,19 @@ type DragState = {
   initialPanel: Panel;
 };
 
-export function Annotation({ panel, onUpdate }: AnnotationProps) {
+export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: AnnotationProps) {
   const { selectedPanelId, setSelectedPanelId, deletePanel } = useStore();
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [localPanel, setLocalPanel] = useState<Panel>(panel);
 
   const isSelected = selectedPanelId === panel.id;
+
+  // Sync local panel state if the prop changes from outside
+  if (panel.x !== localPanel.x || panel.y !== localPanel.y || panel.width !== localPanel.width || panel.height !== localPanel.height) {
+    if (!dragState) {
+      setLocalPanel(panel);
+    }
+  }
 
   const handleMouseDown = (
     e: React.MouseEvent<HTMLDivElement>,
@@ -35,8 +46,9 @@ export function Annotation({ panel, onUpdate }: AnnotationProps) {
       type,
       startX: e.clientX,
       startY: e.clientY,
-      initialPanel: panel,
+      initialPanel: panel, // Use the passed-in panel as the base for calculations
     });
+    onDragStart(); // Notify parent that a drag has started
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const dx = moveEvent.clientX - e.clientX;
@@ -78,13 +90,22 @@ export function Annotation({ panel, onUpdate }: AnnotationProps) {
       if(newProps.width && newProps.width < 10) newProps.width = 10;
       if(newProps.height && newProps.height < 10) newProps.height = 10;
       
-      onUpdate(panel.id, newProps);
+      setLocalPanel(prev => ({...prev, ...newProps }));
     };
 
     const handleMouseUp = () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
+      
+      // At the end of the drag, call the onUpdate function to persist the final change.
       setDragState(null);
+      onUpdate(panel.id, {
+        x: localPanel.x,
+        y: localPanel.y,
+        width: localPanel.width,
+        height: localPanel.height
+      });
+      onDragEnd(); // Notify parent that the drag has ended
     };
 
     document.addEventListener("mousemove", handleMouseMove);
@@ -99,6 +120,8 @@ export function Annotation({ panel, onUpdate }: AnnotationProps) {
     />
   );
   
+  const displayPanel = dragState ? localPanel : panel;
+
   return (
     <div
       className={cn(
@@ -108,10 +131,10 @@ export function Annotation({ panel, onUpdate }: AnnotationProps) {
           : "border-accent/70 bg-accent/10",
       )}
       style={{
-        left: panel.x,
-        top: panel.y,
-        width: panel.width,
-        height: panel.height,
+        left: displayPanel.x,
+        top: displayPanel.y,
+        width: displayPanel.width,
+        height: displayPanel.height,
         cursor: "move",
       }}
       onMouseDown={(e) => handleMouseDown(e, "move")}
