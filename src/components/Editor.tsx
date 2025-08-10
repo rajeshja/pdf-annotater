@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, temporalStore } from "@/lib/store";
 import { Annotation } from "@/components/Annotation";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -18,8 +18,8 @@ export function Editor() {
     addPanel,
     toggleCreatePanel,
     updatePanel,
-    temporal,
   } = useStore();
+  const temporal = temporalStore;
   
   const [newPanel, setNewPanel] = useState<Panel | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -115,7 +115,6 @@ export function Editor() {
   };
   
   const handlePanelUpdate = (panelId: string, finalPanel: Panel) => {
-    temporal.pause();
     const scaledProps: Partial<Omit<Panel, "id">> = {};
     if (finalPanel.x !== undefined) scaledProps.x = finalPanel.x / scaleFactor;
     if (finalPanel.y !== undefined) scaledProps.y = finalPanel.y / scaleFactor;
@@ -123,6 +122,13 @@ export function Editor() {
     if (finalPanel.height !== undefined) scaledProps.height = finalPanel.height / scaleFactor;
 
     updatePanel(panelId, scaledProps);
+  }
+  
+  const handleDragStart = () => {
+    temporal.pause();
+  }
+
+  const handleDragEnd = () => {
     temporal.resume();
   }
 
@@ -170,6 +176,8 @@ export function Editor() {
               key={panel.id} 
               panel={scaledPanel} 
               onUpdate={handlePanelUpdate}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
             />
           );
         })}

@@ -11,6 +11,8 @@ import { Trash2 } from "lucide-react";
 interface AnnotationProps {
   panel: Panel;
   onUpdate: (panelId: string, finalPanel: Panel) => void;
+  onDragStart: () => void;
+  onDragEnd: () => void;
 }
 
 type DragState = {
@@ -20,7 +22,7 @@ type DragState = {
   initialPanel: Panel;
 };
 
-export function Annotation({ panel, onUpdate }: AnnotationProps) {
+export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: AnnotationProps) {
   const { selectedPanelId, setSelectedPanelId, deletePanel } = useStore();
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [localPanel, setLocalPanel] = useState<Panel>(panel);
@@ -41,6 +43,7 @@ export function Annotation({ panel, onUpdate }: AnnotationProps) {
   ) => {
     e.stopPropagation();
     setSelectedPanelId(panel.id);
+    onDragStart(); // Pause temporal store
 
     // Start drag state with the most recent panel state
     const currentPanel = localPanel;
@@ -126,6 +129,7 @@ export function Annotation({ panel, onUpdate }: AnnotationProps) {
         
         onUpdate(panel.id, finalPanel);
         setDragState(null);
+        onDragEnd(); // Resume temporal store
     };
 
     document.addEventListener("mousemove", handleMouseMove);
@@ -148,7 +152,7 @@ export function Annotation({ panel, onUpdate }: AnnotationProps) {
         "absolute border-2 transition-all box-border",
         isSelected
           ? "border-primary bg-primary/20"
-          : "border-accent/70 bg-accent/10",
+          : "border-accent bg-accent/10",
       )}
       style={{
         left: displayPanel.x,
