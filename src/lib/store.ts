@@ -5,13 +5,16 @@ import { temporal } from "zundo";
 import JSZip from "jszip";
 import * as pdfjsLib from "pdfjs-dist";
 import type { Page, Panel } from "@/types";
-import { detectPanels } from "@/ai/flows/panel-detection";
+import { detectPanels as detectPanelsWithGemini } from "@/ai/flows/panel-detection";
+import { detectPanelsWithOpencv } from "@/lib/opencv";
 
 if (typeof window !== "undefined") {
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 }
 
 const DPI = 300;
+
+type DetectionMethod = 'gemini' | 'opencv';
 
 export interface AppState {
   file: File | null;
@@ -20,7 +23,7 @@ export interface AppState {
   selectedPanelId: string | null;
   isProcessing: boolean;
   isCreatingPanel: boolean;
-  lastUndoRedoTime: number;
+  detectionMethod: DetectionMethod;
 
   setFile: (file: File) => Promise<void>;
   setCurrentPageIndex: (index: number) => void;
@@ -30,6 +33,7 @@ export interface AppState {
   addPanel: (panel: Panel) => void;
   toggleCreatePanel: () => void;
   exportToCbz: () => Promise<void>;
+  setDetectionMethod: (method: DetectionMethod) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -41,7 +45,9 @@ export const useStore = create<AppState>()(
       selectedPanelId: null,
       isProcessing: false,
       isCreatingPanel: false,
-      lastUndoRedoTime: 0,
+      detectionMethod: 'opencv',
+
+      setDetectionMethod: (method: DetectionMethod) => set({ detectionMethod: method }),
 
       setFile: async (file: File) => {
         set({ isProcessing: true, file, pages: [], currentPageIndex: 0 });
@@ -70,12 +76,20 @@ export const useStore = create<AppState>()(
         }
         set({ pages: newPages.map(p => ({...p, panels: []})) });
 
+        const { detectionMethod } = get();
+
         const pagesWithPanels = await Promise.all(
           newPages.map(async (page, index) => {
             try {
-              const detected = await detectPanels({
-                pageDataUri: page.imageUrl,
-              });
+              let detected: Omit<Panel, 'id'>[] = [];
+              if (detectionMethod === 'gemini') {
+                detected = await detectPanelsWithGemini({
+                  pageDataUri: page.imageUrl,
+                });
+              } else {
+                 detected = await detectPanelsWithOpencv(page.imageUrl);
+              }
+
               const panelsWithIds: Panel[] = detected.map((p) => ({
                 ...p,
                 id: `${page.pageNumber}-${Math.random().toString(36).substr(2, 9)}`,

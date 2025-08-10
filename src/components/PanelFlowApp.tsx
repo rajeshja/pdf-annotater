@@ -6,11 +6,13 @@ import { Header } from "@/components/Header";
 import { PageThumbnails } from "@/components/PageThumbnails";
 import { Editor } from "@/components/Editor";
 import { Card } from "@/components/ui/card";
-import { UploadCloud, FileText } from "lucide-react";
+import { UploadCloud } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export function PanelFlowApp() {
-  const { file, setFile, isProcessing, pages } = useStore();
+  const { file, setFile, isProcessing, pages, detectionMethod, setDetectionMethod } = useStore();
   const [isMounted, setIsMounted] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,19 +76,35 @@ export function PanelFlowApp() {
           </>
         ) : (
           <div className="flex-1 p-4 flex items-center justify-center">
-            <Card
-              className={`flex w-full max-w-2xl h-96 items-center justify-center border-2 border-dashed transition-colors ${dragOver ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
-              onDragOver={onDragOver}
-              onDragLeave={onDragLeave}
-              onDrop={onDrop}
-            >
-              <div className="text-center space-y-4 text-muted-foreground">
-                <UploadCloud className="mx-auto h-12 w-12" />
-                <h3 className="text-2xl font-semibold text-foreground">Drop your PDF here</h3>
-                <p>or <button onClick={onBrowseClick} className="text-primary font-medium hover:underline">browse files</button> on your computer</p>
-                <p className="text-xs">All processing is done in your browser. No data ever leaves your device.</p>
-              </div>
-            </Card>
+            <div className="flex flex-col gap-4 w-full max-w-2xl">
+              <Card
+                className={`flex h-96 items-center justify-center border-2 border-dashed transition-colors ${dragOver ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop}
+              >
+                <div className="text-center space-y-4 text-muted-foreground">
+                  <UploadCloud className="mx-auto h-12 w-12" />
+                  <h3 className="text-2xl font-semibold text-foreground">Drop your PDF here</h3>
+                  <p>or <button onClick={onBrowseClick} className="text-primary font-medium hover:underline">browse files</button> on your computer</p>
+                  <p className="text-xs">All processing is done in your browser. No data ever leaves your device.</p>
+                </div>
+              </Card>
+              <Card className="p-4">
+                <Label className="text-base font-semibold">Panel Detection Method</Label>
+                <p className="text-sm text-muted-foreground mb-4">Choose how to detect comic panels. Local is faster, Gemini may be more accurate.</p>
+                <RadioGroup value={detectionMethod} onValueChange={(value) => setDetectionMethod(value as 'gemini' | 'opencv')}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="opencv" id="opencv" />
+                    <Label htmlFor="opencv">Local OpenCV (Fast, In-Browser)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="gemini" id="gemini" />
+                    <Label htmlFor="gemini">Gemini AI (Slower, Cloud-based)</Label>
+                  </div>
+                </RadioGroup>
+              </Card>
+            </div>
           </div>
         )}
       </div>
