@@ -43,7 +43,7 @@ export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: Annotati
   ) => {
     e.stopPropagation();
     setSelectedPanelId(panel.id);
-    onDragStart(); // Pause temporal store
+    onDragStart();
 
     // Start drag state with the most recent panel state
     const currentPanel = localPanel;
@@ -101,35 +101,23 @@ export function Annotation({ panel, onUpdate, onDragStart, onDragEnd }: Annotati
       setLocalPanel(prev => ({...prev, ...newProps }));
     };
 
-    const handleMouseUp = (upEvent: MouseEvent) => {
+    const handleMouseUp = () => {
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
         
         // Final calculation needs to be done here to get the correct end state of localPanel
-        const dx = upEvent.clientX - e.clientX;
-        const dy = upEvent.clientY - e.clientY;
-        
-        let finalProps: Partial<Panel> = {};
+        // Since localPanel is updated in handleMouseMove, we can use it directly
+        setLocalPanel(currentLocalPanel => {
+            const finalPanel = { ...currentLocalPanel };
+            if (finalPanel.width < 10) finalPanel.width = 10;
+            if (finalPanel.height < 10) finalPanel.height = 10;
+            
+            onUpdate(panel.id, finalPanel);
+            return finalPanel;
+        });
 
-        switch (type) {
-            case "move": finalProps = { x: currentPanel.x + dx, y: currentPanel.y + dy }; break;
-            case "resize-br": finalProps = { width: currentPanel.width + dx, height: currentPanel.height + dy }; break;
-            case "resize-bl": finalProps = { x: currentPanel.x + dx, width: currentPanel.width - dx, height: currentPanel.height + dy }; break;
-            case "resize-tr": finalProps = { y: currentPanel.y + dy, width: currentPanel.width + dx, height: currentPanel.height - dy }; break;
-            case "resize-tl": finalProps = { x: currentPanel.x + dx, y: currentPanel.y + dy, width: currentPanel.width - dx, height: currentPanel.height - dy }; break;
-            case "resize-t": finalProps = { y: currentPanel.y + dy, height: currentPanel.height - dy }; break;
-            case "resize-b": finalProps = { height: currentPanel.height + dy }; break;
-            case "resize-l": finalProps = { x: currentPanel.x + dx, width: currentPanel.width - dx }; break;
-            case "resize-r": finalProps = { width: currentPanel.width + dx }; break;
-        }
-
-        const finalPanel = { ...currentPanel, ...finalProps };
-        if(finalPanel.width < 10) finalPanel.width = 10;
-        if(finalPanel.height < 10) finalPanel.height = 10;
-        
-        onUpdate(panel.id, finalPanel);
         setDragState(null);
-        onDragEnd(); // Resume temporal store
+        onDragEnd();
     };
 
     document.addEventListener("mousemove", handleMouseMove);

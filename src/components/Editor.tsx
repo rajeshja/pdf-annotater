@@ -19,12 +19,12 @@ export function Editor() {
     toggleCreatePanel,
     updatePanel,
   } = useStore();
-  const temporal = temporalStore;
   
   const [newPanel, setNewPanel] = useState<Panel | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [scaleFactor, setScaleFactor] = useState(1);
+  const temporal = temporalStore;
 
   const currentPage = pages[currentPageIndex];
 

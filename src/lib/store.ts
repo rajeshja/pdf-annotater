@@ -16,7 +16,7 @@ const DPI = 300;
 export type DetectionMethod = 'gemini' | 'opencv';
 export type DetectPanelsFn = (pageDataUri: string) => Promise<Omit<Panel, "id">[]>;
 
-interface AppState {
+export interface AppState {
   file: File | null;
   pages: Page[];
   currentPageIndex: number;
@@ -228,7 +228,7 @@ function filterNestedPanels(panels: Omit<Panel, "id">[]): Omit<Panel, "id">[] {
 }
 
 
-const useStore = create(
+export const useStore = create<AppState>()(
   temporal(store, {
     partialize: (state) => {
       const { pages, currentPageIndex, selectedPanelId } = state;
@@ -237,7 +237,4 @@ const useStore = create(
   })
 );
 
-// We need to grab the temporal store and its methods from the initial store creation
-const temporalStore = useStore.temporal;
-
-export { useStore, temporalStore };
+export const temporalStore = useStore.temporal;

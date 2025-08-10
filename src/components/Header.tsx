@@ -13,7 +13,7 @@ interface HeaderProps {
 
 export function Header({ onBrowseClick }: HeaderProps) {
   const { file, exportToCbz, isCreatingPanel, toggleCreatePanel } = useStore();
-  const { undo, redo, pastStates, futureStates } = temporalStore.getState();
+  const { undo, redo, pastStates, futureStates } = temporalStore;
 
   return (
     <header className="flex h-16 items-center border-b bg-card px-4 shrink-0">
