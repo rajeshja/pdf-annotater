@@ -1,7 +1,10 @@
+
 "use client";
 
 import { useCallback, useEffect, useState, useRef } from "react";
-import { useStore } from "@/lib/store";
+import { useStore, type DetectionMethod, type DetectPanelsFn } from "@/lib/store";
+import { detectPanels as detectPanelsWithGemini } from "@/ai/flows/panel-detection";
+import { detectPanelsWithOpencv } from "@/lib/opencv";
 import { Header } from "@/components/Header";
 import { PageThumbnails } from "@/components/PageThumbnails";
 import { Editor } from "@/components/Editor";
@@ -20,10 +23,20 @@ export function PanelFlowApp() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+  
+  const handleFileSubmit = useCallback(async (file: File) => {
+    if (file && file.type === "application/pdf") {
+      const detectPanels: DetectPanelsFn = detectionMethod === 'gemini' 
+        ? (uri) => detectPanelsWithGemini({ pageDataUri: uri })
+        : detectPanelsWithOpencv;
+        
+      await setFile(file, detectPanels);
+    }
+  }, [detectionMethod, setFile]);
 
   const handleFileChange = (files: FileList | null) => {
-    if (files && files[0] && files[0].type === "application/pdf") {
-      setFile(files[0]);
+    if (files && files[0]) {
+      handleFileSubmit(files[0]);
     }
   };
 
@@ -43,7 +56,7 @@ export function PanelFlowApp() {
       setDragOver(false);
       handleFileChange(e.dataTransfer.files);
     },
-    []
+    [handleFileChange]
   );
   
   const onBrowseClick = () => {

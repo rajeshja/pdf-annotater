@@ -1,14 +1,11 @@
 
 "use client";
 
-import { create } from "zustand";
+import { create, StoreApi } from "zustand";
 import { temporal, type TemporalState } from "zundo";
 import JSZip from "jszip";
 import * as pdfjsLib from "pdfjs-dist";
 import type { Page, Panel } from "@/types";
-import { detectPanels as detectPanelsWithGemini } from "@/ai/flows/panel-detection";
-import { detectPanelsWithOpencv } from "@/lib/opencv";
-import { StoreApi } from "zustand";
 
 if (typeof window !== "undefined") {
   pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -16,9 +13,10 @@ if (typeof window !== "undefined") {
 
 const DPI = 300;
 
-type DetectionMethod = 'gemini' | 'opencv';
+export type DetectionMethod = 'gemini' | 'opencv';
+export type DetectPanelsFn = (pageDataUri: string) => Promise<Omit<Panel, "id">[]>;
 
-export interface AppState {
+interface AppState {
   file: File | null;
   pages: Page[];
   currentPageIndex: number;
@@ -27,7 +25,7 @@ export interface AppState {
   isCreatingPanel: boolean;
   detectionMethod: DetectionMethod;
 
-  setFile: (file: File) => Promise<void>;
+  setFile: (file: File, detectPanels: DetectPanelsFn) => Promise<void>;
   setCurrentPageIndex: (index: number) => void;
   setSelectedPanelId: (id: string | null) => void;
   updatePanel: (panelId: string, newProps: Partial<Panel>) => void;
@@ -37,10 +35,6 @@ export interface AppState {
   exportToCbz: () => Promise<void>;
   setDetectionMethod: (method: DetectionMethod) => void;
 }
-
-type StoreWithTemporal = AppState & {
-  temporal: TemporalState<Pick<AppState, 'pages' | 'currentPageIndex' | 'selectedPanelId'>>;
-};
 
 const store = (
   set: StoreApi<AppState>['setState'],
@@ -56,7 +50,7 @@ const store = (
 
     setDetectionMethod: (method: DetectionMethod) => set({ detectionMethod: method }),
 
-    setFile: async (file: File) => {
+    setFile: async (file: File, detectPanels: DetectPanelsFn) => {
       set({ isProcessing: true, file, pages: [], currentPageIndex: 0 });
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
@@ -83,21 +77,10 @@ const store = (
       }
       set({ pages: newPages.map(p => ({...p, panels: []})) });
 
-      const { detectionMethod } = get();
-
       const pagesWithPanels = await Promise.all(
         newPages.map(async (page, index) => {
           try {
-            let detected: Omit<Panel, 'id'>[] = [];
-            if (detectionMethod === 'gemini') {
-              const result = await detectPanelsWithGemini({
-                pageDataUri: page.imageUrl,
-              });
-              detected = result || [];
-            } else {
-                detected = await detectPanelsWithOpencv(page.imageUrl);
-            }
-            
+            const detected = await detectPanels(page.imageUrl);
             const filtered = filterNestedPanels(detected);
 
             const panelsWithIds: Panel[] = filtered.map((p) => ({
@@ -236,16 +219,16 @@ function filterNestedPanels(panels: Omit<Panel, "id">[]): Omit<Panel, "id">[] {
         panelA.y + panelA.height <= panelB.y + panelB.height;
 
       if (isContained) {
-        // panelA is inside panelB, remove panelA
         delete filteredPanels[i];
       }
     }
   }
   
-  return filteredPanels.filter(p => p); // remove empty spots
+  return filteredPanels.filter(p => p);
 }
 
-export const useStore = create<StoreWithTemporal>(
+
+const useStore = create(
   temporal(store, {
     partialize: (state) => {
       const { pages, currentPageIndex, selectedPanelId } = state;
@@ -253,3 +236,8 @@ export const useStore = create<StoreWithTemporal>(
     },
   })
 );
+
+// We need to grab the temporal store and its methods from the initial store creation
+const temporalStore = useStore.temporal;
+
+export { useStore, temporalStore };
